@@ -1,10 +1,10 @@
-        from flask import Flask, request, send_file
+                    from flask import Flask, request, send_file
 from gtts import gTTS
 import os
 
 app = Flask(__name__)
 
-@app.route('/')
+@app.route                            ('/')
 def home():
     return "<h1>የድምጽ ማቀነባበሪያ ሞተር</h1><p>ጊትሃብ ላይ በትክክል እየሰራ ነው!</p>"
 
