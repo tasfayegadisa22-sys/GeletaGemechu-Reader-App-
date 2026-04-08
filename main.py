@@ -1,12 +1,12 @@
-                    from flask import Flask, request, send_file
-from gtts import gTTS
 import os
+from flask import Flask, request, send_file
+from gtts import gTTS
 
 app = Flask(__name__)
 
-@app.route                            ('/')
+@app.route('/')
 def home():
-    return "<h1>የድምጽ ማቀነባበሪያ ሞተር</h1><p>ጊትሃብ ላይ በትክክል እየሰራ ነው!</p>"
+    return "<h1>GeletaGemechu Reader App</h1><p>ሞተሩ በትክክል እየሰራ ነው!</p>"
 
 @app.route('/read', methods=['POST'])
 def read_text():
@@ -16,7 +16,8 @@ def read_text():
     
     tts = gTTS(text=text, lang='en')
     tts.save("speech.mp3")
-return send_file("speech.mp3")  
+    return send_file("speech.mp3")
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=8080)
+    port = int(os.environ.get('PORT', 10000))
+app.run(host='0.0.0.0', port=port)
