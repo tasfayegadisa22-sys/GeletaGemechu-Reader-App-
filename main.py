@@ -1,12 +1,13 @@
 import os
-from flask import Flask, request, send_file
+from flask import Flask, request, send_file, render_template
 from gtts import gTTS
 
 app = Flask(__name__)
 
 @app.route('/')
 def home():
-    return "<h1>GeletaGemechu Reader App</h1><p>ሞተሩ በትክክል እየሰራ ነው!</p>"
+    # ይህ ትዕዛዝ ቅድም የፈጠርነውን የጽሁፍ ሳጥን ያመጣል
+    return render_template('index.html')
 
 @app.route('/read', methods=['POST'])
 def read_text():
@@ -14,6 +15,7 @@ def read_text():
     if not text:
         return "እባክህ ጽሁፍ አስገባ", 400
     
+    # ጽሁፉን ወደ ድምጽ ይቀይራል
     tts = gTTS(text=text, lang='en')
     tts.save("speech.mp3")
     return send_file("speech.mp3")
