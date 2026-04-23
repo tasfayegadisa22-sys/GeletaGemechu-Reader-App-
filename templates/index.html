@@ -3,20 +3,56 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GeletaGemechu Reader App</title>
+    <title>የገለታ ገመቹ አነባቢ መተግበሪያ</title>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; text-align: center; padding: 50px; }
-        textarea { width: 80%; max-width: 600px; padding: 10px; border-radius: 5px; }
-        button { padding: 10px 20px; background-color: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; text-align: center; padding: 40px; background-color: #f4f4f9; }
+        .container { background: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); max-width: 600px; margin: auto; }
+        textarea { width: 100%; padding: 15px; border-radius: 5px; border: 1px solid #ddd; font-size: 16px; margin-bottom: 20px; }
+        button { background-color: #28a745; color: white; border: none; padding: 12px 25px; border-radius: 5px; cursor: pointer; font-size: 16px; }
+        button:hover { background-color: #218838; }
+        audio { margin-top: 25px; width: 100%; }
+        #status { margin-top: 10px; color: #555; }
     </style>
 </head>
 <body>
-    <h1>የገለታ ገመቹ አንባቢ መተግበሪያ</h1>
-    <p>እንኳን ደህና መጡ! እንዲነበብልዎ የሚፈልጉትን የአማርኛ ጽሁፍ ከታች ያስገቡ።</p>
+    <div class="container">
+        <h1>የገለታ ገመቹ አንባቢ መተግበሪያ</h1>
+        <p>የሚነበበውን አማርኛ እዚህ ሳጥን ውስጥ ይጻፉ</p>
     
-<form action="/read" method="POST">
-        <textarea name="text" rows="8" placeholder="ጽሁፍ እዚህ ጋር ይጻፉ..." required></textarea><br><br>
-        <button type="submit">ድምጹን አሰማኝ</button>
-    </form>
+        <textarea id="textInput" rows="6" placeholder="ለምሳሌ፦ ሰላም ለዚህ ቤት! እንዴት ናችሁ?"></textarea><br>
+        <button onclick="convertText()">ድምጹን አሰማኝ</button>
+        
+        <div id="status"></div>
+        <audio id="audioPlayer" controls style="display:none;"></audio>
+    </div>
+
+    <script>
+        async function convertText() {
+            const text = document.getElementById('textInput').value;
+            const status = document.getElementById('status');
+            const player = document.getElementById('audioPlayer');
+            
+            if (!text) { alert("እባክዎ ጽሁፍ ያስገቡ!"); return; }
+
+            status.innerText = "ድምጹ እየተዘጋጀ ነው... እባክዎ ይጠብቁ";
+            
+            const response = await fetch('/read', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: 'text=' + encodeURIComponent(text)
+            });
+
+            if (response.ok) {
+                const blob = await response.blob();
+                const url = URL.createObjectURL(blob);
+                player.src = url;
+                player.style.display = "block";
+                player.play();
+                status.innerText = "ዝግጁ ነው!";
+            } else {
+                status.innerText = "ስህተት ተፈጥሯል፣ እባክዎ ደግመው ይሞክሩ።";
+            }
+        }
+    </script>
 </body>
 </html>
