@@ -12,13 +12,13 @@ def home():
 def read_text():
     text = request.form.get('text')
     if not text:
-        return "እባክህ ጽሁፍ አስገባ", 400
+        return "No text", 400
     
-    # እዚህ ጋር lang='am' በማድረግ አማርኛ እንዲሆን አደረግነው
+    # gTTS በመጠቀም አማርኛውን ወደ ድምጽ መቀየር
     tts = gTTS(text=text, lang='am')
     tts.save("speech.mp3")
-    return send_file("speech.mp3")
+    return send_file("speech.mp3", mimetype="audio/mpeg")
 
 if __name__ == '__main__':
-port = int(os.environ.get('PORT', 10000))
+    port = int(os.environ.get('PORT', 10000))
     app.run(host='0.0.0.0', port=port)
