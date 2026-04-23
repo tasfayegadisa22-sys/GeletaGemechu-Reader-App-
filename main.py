@@ -10,14 +10,24 @@ def home():
 
 @app.route('/read', methods=['POST'])
 def read_text():
-    text = request.form.get('text')
-    if not text:
-        return "No text", 400
+    text = request.form.get('text', '')
+    file = request.files.get('file')
+
+    # ፋይል ከገባ ፋይሉን ማንበብ
+    if file and file.filename.endswith('.txt'):
+        text = file.read().decode('utf-8')
     
-    # gTTS በመጠቀም አማርኛውን ወደ ድምጽ መቀየር
-    tts = gTTS(text=text, lang='am')
-    tts.save("speech.mp3")
-    return send_file("speech.mp3", mimetype="audio/mpeg")
+    # ባዶ ከሆነ መልስ መስጠት
+    if not text.strip():
+        return "ምንም ጽሁፍ አልተገኘም", 400
+    
+    try:
+        # ጽሁፉን ወደ ድምጽ መቀየር
+        tts = gTTS(text=text, lang='am')
+        tts.save("speech.mp3")
+        return send_file("speech.mp3", mimetype="audio/mpeg")
+    except Exception as e:
+        return str(e), 500
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 10000))
