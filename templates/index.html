@@ -8,49 +8,67 @@
         body { font-family: 'Segoe UI', Tahoma, sans-serif; text-align: center; padding: 40px; background-color: #f4f4f9; }
         .container { background: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); max-width: 600px; margin: auto; }
         textarea { width: 100%; padding: 15px; border-radius: 5px; border: 1px solid #ddd; font-size: 16px; margin-bottom: 20px; }
+        input[type="file"] { margin-bottom: 20px; }
         button { background-color: #28a745; color: white; border: none; padding: 12px 25px; border-radius: 5px; cursor: pointer; font-size: 16px; }
-        button:hover { background-color: #218838; }
         audio { margin-top: 25px; width: 100%; }
-        #status { margin-top: 10px; color: #555; }
+        #status { margin-top: 10px; color: #0056b3; font-weight: bold; }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>የገለታ ገመቹ አንባቢ መተግበሪያ</h1>
-        <p>የሚነበበውን አማርኛ እዚህ ሳጥን ውስጥ ይጻፉ</p>
-    
-        <textarea id="textInput" rows="6" placeholder="ለምሳሌ፦ ሰላም ለዚህ ቤት! እንዴት ናችሁ?"></textarea><br>
-        <button onclick="convertText()">ድምጹን አሰማኝ</button>
+        <h1>የገለታ ገመቹ አነባቢ መተግበሪያ</h1>
         
-        <div id="status"></div>
+        <p>1. ጽሁፍ እዚህ ይጻፉ፡</p>
+        <textarea id="textInput" rows="5" placeholder="አማርኛ ጽሁፍ እዚህ ጋር ይጻፉ..."></textarea>
+        
+        <p>ወይም 2. የጽሁፍ ፋይል (.txt) ይምረጡ፡</p>
+        <input type="file" id="fileInput" accept=".txt"><br>
+        
+        <button onclick="convertText()">ወደ ድምጽ ቀይር</button>
+        
+        <div id="status" aria-live="assertive"></div>
+        
         <audio id="audioPlayer" controls style="display:none;"></audio>
     </div>
 
     <script>
         async function convertText() {
             const text = document.getElementById('textInput').value;
+            const fileInput = document.getElementById('fileInput').files[0];
             const status = document.getElementById('status');
             const player = document.getElementById('audioPlayer');
             
-            if (!text) { alert("እባክዎ ጽሁፍ ያስገቡ!"); return; }
+            if (!text && !fileInput) { 
+                status.innerText = "እባክዎ ጽሁፍ ይጻፉ ወይም ፋይል ይምረጡ!"; 
+                return; 
+            }
 
-            status.innerText = "ድምጹ እየተዘጋጀ ነው... እባክዎ ይጠብቁ";
+            // ስክሪን አንባቢህ ይህንን ወዲያውኑ ያነበዋል
+            status.innerText = "ሂደቱ ተጀምሯል፣ እባክዎ ትንሽ ይጠብቁ...";
+            player.style.display = "none";
             
-            const response = await fetch('/read', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: 'text=' + encodeURIComponent(text)
-            });
+            const formData = new FormData();
+            if (fileInput) formData.append('file', fileInput);
+            if (text) formData.append('text', text);
 
-            if (response.ok) {
-                const blob = await response.blob();
-                const url = URL.createObjectURL(blob);
-                player.src = url;
-                player.style.display = "block";
-                player.play();
-                status.innerText = "ዝግጁ ነው!";
-            } else {
-                status.innerText = "ስህተት ተፈጥሯል፣ እባክዎ ደግመው ይሞክሩ።";
+            try {
+                const response = await fetch('/read', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const url = URL.createObjectURL(blob);
+                    player.src = url;
+                    player.style.display = "block";
+                    // ስክሪን አንባቢህ ይህንን ሲያነብ ስራው አለቀ ማለት ነው
+                    status.innerText = "ድምጹ ዝግጁ ነው! ፕሌይ (Play) የሚለውን ይጫኑ።";
+                } else {
+                    status.innerText = "ስህተት ተፈጥሯል። ጽሁፉን ያረጋግጡ።";
+                }
+            } catch (e) {
+                status.innerText = "ከኢንተርኔት ጋር ችግር አለ።";
             }
         }
     </script>
