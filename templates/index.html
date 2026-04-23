@@ -4,16 +4,19 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GeletaGemechu Reader App</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; text-align: center; padding: 50px; }
+        textarea { width: 80%; max-width: 600px; padding: 10px; border-radius: 5px; }
+        button { padding: 10px 20px; background-color: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; }
+    </style>
 </head>
 <body>
-    <h1>እንኳን ወደ አነባቢው ድረ-ገጽ በደህና መጡ!</h1>
-    <p>እባክዎ እንዲነበብልዎ የሚፈልጉትን ጽሁፍ (በእንግሊዝኛ) ከታች ባለው ሳጥን ውስጥ ያስገቡ።</p>
+    <h1>የገለታ ገመቹ አንባቢ መተግበሪያ</h1>
+    <p>እንኳን ደህና መጡ! እንዲነበብልዎ የሚፈልጉትን የአማርኛ ጽሁፍ ከታች ያስገቡ።</p>
     
-    <form action="/read" method="POST">
-        <label for="text">ጽሁፍ ማስገቢያ ሳጥን፡</label><br>
-        <textarea id="text" name="text" rows="8" cols="50" required></textarea><br><br>
-        
-        <button type="submit">ድምጹን አሰማኝ (Read Text)</button>
+<form action="/read" method="POST">
+        <textarea name="text" rows="8" placeholder="ጽሁፍ እዚህ ጋር ይጻፉ..." required></textarea><br><br>
+        <button type="submit">ድምጹን አሰማኝ</button>
     </form>
 </body>
 </html>
