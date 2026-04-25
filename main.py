@@ -1,6 +1,8 @@
 import os
 from flask import Flask, request, send_file, render_template
 from gtts import gTTS
+import PyPDF2
+import docx
 
 app = Flask(__name__)
 
@@ -13,16 +15,35 @@ def read_text():
     text = request.form.get('text', '')
     file = request.files.get('file')
 
-    # ፋይል ከገባ ፋይሉን ማንበብ
-    if file and file.filename.endswith('.txt'):
-        text = file.read().decode('utf-8')
+    # ፋይል ከገባ አይነቱን ለይቶ ማንበብ
+    if file:
+        filename = file.filename.lower()
+        try:
+            if filename.endswith('.txt'):
+                text = file.read().decode('utf-8')
+                
+            elif filename.endswith('.pdf'):
+                reader = PyPDF2.PdfReader(file)
+                extracted_text = []
+                for page in reader.pages:
+                    extracted_text.append(page.extract_text())
+                text = " ".join(extracted_text)
+                
+            elif filename.endswith('.docx'):
+                doc = docx.Document(file)
+                text = "\n".join([para.text for para in doc.paragraphs])
+                
+            else:
+                return "ይህ የፋይል አይነት አይደገፍም።", 400
+                
+        except Exception as e:
+            return f"ፋይሉን ማንበብ አልተቻለም: {str(e)}", 500
     
-    # ባዶ ከሆነ መልስ መስጠት
     if not text.strip():
         return "ምንም ጽሁፍ አልተገኘም", 400
     
     try:
-        # ጽሁፉን ወደ ድምጽ መቀየር
+        # የተገኘውን ጽሁፍ ወደ ድምጽ መቀየር
         tts = gTTS(text=text, lang='am')
         tts.save("speech.mp3")
         return send_file("speech.mp3", mimetype="audio/mpeg")
