@@ -1,5 +1,5 @@
 import os
-from flask import Flask, request, send_file, render_template
+from flask import Flask, request, send_file, render_template, make_response
 from gtts import gTTS
 import PyPDF2
 import docx
@@ -14,39 +14,45 @@ def home():
 def read_text():
     text = request.form.get('text', '')
     file = request.files.get('file')
+    page_count = 0
 
-    # ፋይል ከገባ አይነቱን ለይቶ ማንበብ
     if file:
         filename = file.filename.lower()
         try:
             if filename.endswith('.txt'):
                 text = file.read().decode('utf-8')
-                
             elif filename.endswith('.pdf'):
                 reader = PyPDF2.PdfReader(file)
+                page_count = len(reader.pages)
                 extracted_text = []
                 for page in reader.pages:
                     extracted_text.append(page.extract_text())
                 text = " ".join(extracted_text)
-                
             elif filename.endswith('.docx'):
                 doc = docx.Document(file)
                 text = "\n".join([para.text for para in doc.paragraphs])
-                
             else:
                 return "ይህ የፋይል አይነት አይደገፍም።", 400
-                
         except Exception as e:
             return f"ፋይሉን ማንበብ አልተቻለም: {str(e)}", 500
     
     if not text.strip():
         return "ምንም ጽሁፍ አልተገኘም", 400
     
+    # ስሌቶች: የቃላት ብዛት እና የድምጽ ርዝመት ግምት (በደቂቃ 130 ቃል)
+    word_count = len(text.split())
+    audio_minutes = max(1, round(word_count / 130))
+    
     try:
-        # የተገኘውን ጽሁፍ ወደ ድምጽ መቀየር
         tts = gTTS(text=text, lang='am')
         tts.save("speech.mp3")
-        return send_file("speech.mp3", mimetype="audio/mpeg")
+        
+        # ድምጹን ከነ መረጃው ወደ ድረ-ገጹ መላክ
+        response = make_response(send_file("speech.mp3", mimetype="audio/mpeg"))
+        response.headers['X-Word-Count'] = str(word_count)
+        response.headers['X-Audio-Minutes'] = str(audio_minutes)
+        response.headers['X-Page-Count'] = str(page_count)
+        return response
     except Exception as e:
         return str(e), 500
 
