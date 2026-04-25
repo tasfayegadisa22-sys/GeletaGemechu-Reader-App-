@@ -3,6 +3,7 @@ from flask import Flask, request, send_file, render_template, make_response
 from gtts import gTTS
 import PyPDF2
 import docx
+import time
 
 app = Flask(__name__)
 
@@ -24,37 +25,33 @@ def read_text():
             elif filename.endswith('.pdf'):
                 reader = PyPDF2.PdfReader(file)
                 page_count = len(reader.pages)
-                extracted_text = []
-                for page in reader.pages:
-                    extracted_text.append(page.extract_text())
-                text = " ".join(extracted_text)
+                text = " ".join([page.extract_text() for page in reader.pages if page.extract_text()])
             elif filename.endswith('.docx'):
                 doc = docx.Document(file)
                 text = "\n".join([para.text for para in doc.paragraphs])
-            else:
-                return "ይህ የፋይል አይነት አይደገፍም።", 400
         except Exception as e:
             return f"ፋይሉን ማንበብ አልተቻለም: {str(e)}", 500
     
     if not text.strip():
         return "ምንም ጽሁፍ አልተገኘም", 400
-    
-    # ስሌቶች: የቃላት ብዛት እና የድምጽ ርዝመት ግምት (በደቂቃ 130 ቃል)
+
     word_count = len(text.split())
     audio_minutes = max(1, round(word_count / 130))
     
     try:
-        tts = gTTS(text=text, lang='am')
+        # ጽሁፉ በጣም ረጅም ከሆነ በትንሽ በትንሹ ከፋፍሎ እንዲያነብ (slow=False መሆኑን እናረጋግጣለን)
+        tts = gTTS(text=text, lang='am', slow=False)
         tts.save("speech.mp3")
         
-        # ድምጹን ከነ መረጃው ወደ ድረ-ገጹ መላክ
         response = make_response(send_file("speech.mp3", mimetype="audio/mpeg"))
         response.headers['X-Word-Count'] = str(word_count)
         response.headers['X-Audio-Minutes'] = str(audio_minutes)
         response.headers['X-Page-Count'] = str(page_count)
         return response
     except Exception as e:
-        return str(e), 500
+        if "429" in str(e):
+            return "ጉግል በአጭር ጊዜ ውስጥ ብዙ ጥያቄ ስለቀረበለት አግዶናል። እባክዎ 10 ደቂቃ ቆይተው ይሞክሩ።", 429
+        return f"የድምጽ ስህተት: {str(e)}", 500
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 10000))
