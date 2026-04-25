@@ -1,4 +1,80 @@
-try {
+<!DOCTYPE html>
+<html lang="am">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>የገለታ ገመቹ አነባቢ መተግበሪያ</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; text-align: center; padding: 40px; background-color: #f4f4f9; }
+        .container { background: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); max-width: 600px; margin: auto; }
+        textarea { width: 100%; padding: 15px; border-radius: 5px; border: 1px solid #ddd; font-size: 16px; margin-bottom: 20px; }
+        input[type="file"] { margin-bottom: 20px; }
+        button { background-color: #28a745; color: white; border: none; padding: 12px 20px; border-radius: 5px; cursor: pointer; font-size: 16px; margin: 5px; }
+        #cancelBtn { background-color: #dc3545; display: none; }
+        #resetBtn { background-color: #17a2b8; display: none; }
+        audio { margin-top: 25px; width: 100%; }
+        #status { margin-top: 20px; padding: 10px; color: #0056b3; font-weight: bold; border-radius: 5px; outline: none; }
+        #status:focus { background-color: #e9ecef; border: 2px solid #0056b3; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>የገለታ ገመቹ አነባቢ መተግበሪያ</h1>
+        
+        <div id="inputsForm">
+            <p>1. ጽሁፍ እዚህ ይጻፉ፡</p>
+            <textarea id="textInput" rows="5" placeholder="አማርኛ ጽሁፍ እዚህ ጋር ይጻፉ..."></textarea>
+            
+            <p>ወይም 2. ፋይል ይምረጡ (.txt, .pdf, .docx)፡</p>
+            <input type="file" id="fileInput" accept=".txt,.pdf,.docx"><br>
+        </div>
+        
+        <button id="convertBtn" onclick="convertText()">ወደ ድምጽ ቀይር</button>
+        <button id="cancelBtn" onclick="cancelProcess()">አቋርጥ (Cancel)</button>
+        <button id="resetBtn" onclick="resetForm()">አዲስ ፋይል ጀምር</button>
+        
+        <div id="status" aria-live="assertive" tabindex="0">መተግበሪያው ዝግጁ ነው።</div>
+        
+        <audio id="audioPlayer" controls style="display:none;"></audio>
+    </div>
+
+    <script>
+        let controller; 
+
+        async function convertText() {
+            const textInput = document.getElementById('textInput');
+            const fileInput = document.getElementById('fileInput');
+            const status = document.getElementById('status');
+            const player = document.getElementById('audioPlayer');
+            const convertBtn = document.getElementById('convertBtn');
+            const cancelBtn = document.getElementById('cancelBtn');
+            const resetBtn = document.getElementById('resetBtn');
+            
+            const text = textInput.value;
+            const file = fileInput.files[0];
+
+            if (!text && !file) { 
+                status.innerText = "እባክዎ ጽሁፍ ይጻፉ ወይም ፋይል ይምረጡ!"; 
+                status.focus();
+                return; 
+            }
+
+            controller = new AbortController();
+            const signal = controller.signal;
+
+            convertBtn.style.display = "none";
+            resetBtn.style.display = "none";
+            cancelBtn.style.display = "inline-block";
+            player.style.display = "none";
+
+            status.innerText = "ደረጃ 1፡ ፋይሉ እየተነበበ እና ጽሁፍ እየተለየ ነው... እባክዎ ይጠብቁ።";
+            status.focus(); 
+            
+            const formData = new FormData();
+            if (file) formData.append('file', file);
+            if (text) formData.append('text', text);
+
+            try {
                 const response = await fetch('/read', {
                     method: 'POST',
                     body: formData,
@@ -26,7 +102,6 @@ try {
                     player.style.display = "block";
                     
                 } else {
-                    // አዲሱ የተስተካከለው ክፍል ይህ ነው
                     const errorText = await response.text();
                     status.innerText = "ስህተት ተፈጥሯል፡ " + errorText;
                     status.focus();
@@ -39,3 +114,27 @@ try {
                 }
                 status.focus();
             }
+
+            cancelBtn.style.display = "none";
+            resetBtn.style.display = "inline-block";
+        }
+
+        function cancelProcess() {
+            if (controller) {
+                controller.abort(); 
+            }
+        }
+
+        function resetForm() {
+            document.getElementById('textInput').value = '';
+            document.getElementById('fileInput').value = '';
+            document.getElementById('audioPlayer').style.display = "none";
+            document.getElementById('status').innerText = "አዲስ ፋይል ለማስገባት ዝግጁ ነው።";
+            document.getElementById('status').focus();
+            
+            document.getElementById('resetBtn').style.display = "none";
+            document.getElementById('convertBtn').style.display = "inline-block";
+        }
+    </script>
+</body>
+</html>
