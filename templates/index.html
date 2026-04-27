@@ -8,6 +8,7 @@
         body { font-family: 'Segoe UI', Tahoma, sans-serif; text-align: center; padding: 40px; background-color: #f4f4f9; }
         .container { background: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); max-width: 600px; margin: auto; }
         textarea { width: 100%; padding: 15px; border-radius: 5px; border: 1px solid #ddd; font-size: 16px; margin-bottom: 20px; }
+        select { padding: 10px; font-size: 16px; margin-bottom: 20px; border-radius: 5px; }
         input[type="file"] { margin-bottom: 20px; }
         button { background-color: #28a745; color: white; border: none; padding: 12px 20px; border-radius: 5px; cursor: pointer; font-size: 16px; margin: 5px; }
         #cancelBtn { background-color: #dc3545; display: none; }
@@ -22,11 +23,17 @@
         <h1>የገለታ ገመቹ አነባቢ መተግበሪያ</h1>
         
         <div id="inputsForm">
-            <p>1. ጽሁፍ እዚህ ይጻፉ፡</p>
-            <textarea id="textInput" rows="5" placeholder="አማርኛ ጽሁፍ እዚህ ጋር ይጻፉ..."></textarea>
+            <p>1. የጽሁፉን ቋንቋ ይምረጡ፡</p>
+            <select id="langInput">
+                <option value="am">አማርኛ (Amharic)</option>
+                <option value="en">እንግሊዝኛ (English)</option>
+            </select>
+
+            <p>2. ጽሁፍ እዚህ ይጻፉ፡</p>
+            <textarea id="textInput" rows="5" placeholder="ጽሁፍ እዚህ ጋር ይጻፉ..."></textarea>
             
-            <p>ወይም 2. ፋይል ይምረጡ (.txt, .pdf, .docx)፡</p>
-            <input type="file" id="fileInput" accept=".txt,.pdf,.docx"><br>
+            <p>ወይም 3. ፋይል ይምረጡ (.txt, .pdf, .docx, .pptx, .epub)፡</p>
+            <input type="file" id="fileInput" accept=".txt,.pdf,.docx,.pptx,.epub"><br>
         </div>
         
         <button id="convertBtn" onclick="convertText()">ወደ ድምጽ ቀይር</button>
@@ -44,6 +51,7 @@
         async function convertText() {
             const textInput = document.getElementById('textInput');
             const fileInput = document.getElementById('fileInput');
+            const langInput = document.getElementById('langInput');
             const status = document.getElementById('status');
             const player = document.getElementById('audioPlayer');
             const convertBtn = document.getElementById('convertBtn');
@@ -52,6 +60,7 @@
             
             const text = textInput.value;
             const file = fileInput.files[0];
+            const lang = langInput.value;
 
             if (!text && !file) { 
                 status.innerText = "እባክዎ ጽሁፍ ይጻፉ ወይም ፋይል ይምረጡ!"; 
@@ -73,6 +82,7 @@
             const formData = new FormData();
             if (file) formData.append('file', file);
             if (text) formData.append('text', text);
+            formData.append('lang', lang); // ቋንቋውን ወደ ፓይዘን እንልካለን
 
             try {
                 const response = await fetch('/read', {
@@ -88,13 +98,8 @@
                     
                     const words = response.headers.get('X-Word-Count') || 0;
                     const minutes = response.headers.get('X-Audio-Minutes') || 0;
-                    const pages = response.headers.get('X-Page-Count') || 0;
 
-                    let infoMsg = `ስራው ተጠናቋል! `;
-                    if (pages > 0) infoMsg += `ከ ${pages} ገጾች ውስጥ `;
-                    infoMsg += `${words} ቃላት ተገኝተዋል። የድምጹ ርዝመት በግምት ${minutes} ደቂቃ ይሆናል። ፕሌይ (Play) ያድርጉ።`;
-
-                    status.innerText = infoMsg;
+                    status.innerText = `ስራው ተጠናቋል! ${words} ቃላት ተገኝተዋል። የድምጹ ርዝመት በግምት ${minutes} ደቂቃ ይሆናል። ፕሌይ (Play) ያድርጉ።`;
                     status.focus(); 
 
                     const url = URL.createObjectURL(blob);
@@ -120,9 +125,7 @@
         }
 
         function cancelProcess() {
-            if (controller) {
-                controller.abort(); 
-            }
+            if (controller) { controller.abort(); }
         }
 
         function resetForm() {
