@@ -8,10 +8,12 @@ import zipfile
 from bs4 import BeautifulSoup
 import edge_tts
 import asyncio
+import openpyxl
+import pytesseract
+from PIL import Image
 
 app = Flask(__name__)
 
-# Edge-TTSን የሚያሰራው ልዩ ኮድ
 async def _generate_edge_tts(text, voice, filename):
     communicate = edge_tts.Communicate(text, voice)
     await communicate.save(filename)
@@ -23,7 +25,7 @@ def home():
 @app.route('/read', methods=['POST'])
 def read_text():
     text = request.form.get('text', '')
-    lang = request.form.get('lang', 'am') # ቋንቋውን መቀበል
+    lang = request.form.get('lang', 'am') 
     file = request.files.get('file')
 
     if file:
@@ -38,7 +40,6 @@ def read_text():
                 doc = docx.Document(file)
                 text = "\n".join([para.text for para in doc.paragraphs])
             elif filename.endswith('.pptx'):
-                # ፓወርፖይንት (PowerPoint) ማንበቢያ
                 prs = pptx.Presentation(file)
                 text_runs = []
                 for slide in prs.slides:
@@ -47,7 +48,6 @@ def read_text():
                             text_runs.append(shape.text)
                 text = "\n".join(text_runs)
             elif filename.endswith('.epub'):
-                # ኢ-ፐብ (EPUB) ማንበቢያ
                 text_runs = []
                 with zipfile.ZipFile(file) as archive:
                     for item in archive.namelist():
@@ -56,22 +56,34 @@ def read_text():
                             soup = BeautifulSoup(content, 'html.parser')
                             text_runs.append(soup.get_text())
                 text = "\n".join(text_runs)
+            elif filename.endswith('.xlsx'):
+                # የኤክሴል ፋይል ማንበቢያ
+                wb = openpyxl.load_workbook(file)
+                text_runs = []
+                for sheet in wb.worksheets:
+                    for row in sheet.iter_rows(values_only=True):
+                        for cell in row:
+                            if cell:
+                                text_runs.append(str(cell))
+                text = " ".join(text_runs)
+            elif filename.endswith(('.png', '.jpg', '.jpeg')):
+                # የፎቶ/ምስል ማንበቢያ (OCR)
+                image = Image.open(file)
+                # አማርኛ እና እንግሊዝኛን አጣምሮ እንዲያነብ 'amh+eng' እንለዋለን
+                text = pytesseract.image_to_string(image, lang='amh+eng')
             else:
                 return "ይህ የፋይል አይነት አይደገፍም።", 400
         except Exception as e:
             return f"ፋይሉን ማንበብ አልተቻለም: {str(e)}", 500
     
     if not text.strip():
-        return "ምንም ጽሁፍ አልተገኘም", 400
+        return "ምንም ጽሁፍ አልተገኘም ወይም ከፎቶው ላይ ጽሁፍ መለየት አልተቻለም", 400
 
     word_count = len(text.split())
     audio_minutes = max(1, round(word_count / 130))
     
     try:
-        # Edge-TTS የድምጽ ምርጫ: እንግሊዝኛ ከሆነ 'Aria', አማርኛ ከሆነ 'Ameha'
         voice = 'en-US-AriaNeural' if lang == 'en' else 'am-ET-AmehaNeural'
-        
-        # ድምጹን ማዘጋጀት
         asyncio.run(_generate_edge_tts(text, voice, "speech.mp3"))
         
         response = make_response(send_file("speech.mp3", mimetype="audio/mpeg"))
@@ -80,7 +92,6 @@ def read_text():
         return response
 
     except Exception as edge_error:
-        # Edge-TTS ካልሰራ (ለምሳሌ ሰርቨር ቢዘጋው) ወዲያውኑ ወደ gTTS እንዲቀይር Backup አድርገነዋል
         try:
             tts = gTTS(text=text, lang=lang, slow=False)
             tts.save("speech.mp3")
