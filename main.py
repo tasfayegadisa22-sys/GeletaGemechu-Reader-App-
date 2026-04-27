@@ -3,9 +3,18 @@ from flask import Flask, request, send_file, render_template, make_response
 from gtts import gTTS
 import PyPDF2
 import docx
-import time
+import pptx
+import zipfile
+from bs4 import BeautifulSoup
+import edge_tts
+import asyncio
 
 app = Flask(__name__)
+
+# Edge-TTSን የሚያሰራው ልዩ ኮድ
+async def _generate_edge_tts(text, voice, filename):
+    communicate = edge_tts.Communicate(text, voice)
+    await communicate.save(filename)
 
 @app.route('/')
 def home():
@@ -14,8 +23,8 @@ def home():
 @app.route('/read', methods=['POST'])
 def read_text():
     text = request.form.get('text', '')
+    lang = request.form.get('lang', 'am') # ቋንቋውን መቀበል
     file = request.files.get('file')
-    page_count = 0
 
     if file:
         filename = file.filename.lower()
@@ -24,11 +33,31 @@ def read_text():
                 text = file.read().decode('utf-8')
             elif filename.endswith('.pdf'):
                 reader = PyPDF2.PdfReader(file)
-                page_count = len(reader.pages)
                 text = " ".join([page.extract_text() for page in reader.pages if page.extract_text()])
             elif filename.endswith('.docx'):
                 doc = docx.Document(file)
                 text = "\n".join([para.text for para in doc.paragraphs])
+            elif filename.endswith('.pptx'):
+                # ፓወርፖይንት (PowerPoint) ማንበቢያ
+                prs = pptx.Presentation(file)
+                text_runs = []
+                for slide in prs.slides:
+                    for shape in slide.shapes:
+                        if hasattr(shape, "text"):
+                            text_runs.append(shape.text)
+                text = "\n".join(text_runs)
+            elif filename.endswith('.epub'):
+                # ኢ-ፐብ (EPUB) ማንበቢያ
+                text_runs = []
+                with zipfile.ZipFile(file) as archive:
+                    for item in archive.namelist():
+                        if item.endswith('.html') or item.endswith('.xhtml'):
+                            content = archive.read(item)
+                            soup = BeautifulSoup(content, 'html.parser')
+                            text_runs.append(soup.get_text())
+                text = "\n".join(text_runs)
+            else:
+                return "ይህ የፋይል አይነት አይደገፍም።", 400
         except Exception as e:
             return f"ፋይሉን ማንበብ አልተቻለም: {str(e)}", 500
     
@@ -39,19 +68,28 @@ def read_text():
     audio_minutes = max(1, round(word_count / 130))
     
     try:
-        # ጽሁፉ በጣም ረጅም ከሆነ በትንሽ በትንሹ ከፋፍሎ እንዲያነብ (slow=False መሆኑን እናረጋግጣለን)
-        tts = gTTS(text=text, lang='am', slow=False)
-        tts.save("speech.mp3")
+        # Edge-TTS የድምጽ ምርጫ: እንግሊዝኛ ከሆነ 'Aria', አማርኛ ከሆነ 'Ameha'
+        voice = 'en-US-AriaNeural' if lang == 'en' else 'am-ET-AmehaNeural'
+        
+        # ድምጹን ማዘጋጀት
+        asyncio.run(_generate_edge_tts(text, voice, "speech.mp3"))
         
         response = make_response(send_file("speech.mp3", mimetype="audio/mpeg"))
         response.headers['X-Word-Count'] = str(word_count)
         response.headers['X-Audio-Minutes'] = str(audio_minutes)
-        response.headers['X-Page-Count'] = str(page_count)
         return response
-    except Exception as e:
-        if "429" in str(e):
-            return "ጉግል በአጭር ጊዜ ውስጥ ብዙ ጥያቄ ስለቀረበለት አግዶናል። እባክዎ 10 ደቂቃ ቆይተው ይሞክሩ።", 429
-        return f"የድምጽ ስህተት: {str(e)}", 500
+
+    except Exception as edge_error:
+        # Edge-TTS ካልሰራ (ለምሳሌ ሰርቨር ቢዘጋው) ወዲያውኑ ወደ gTTS እንዲቀይር Backup አድርገነዋል
+        try:
+            tts = gTTS(text=text, lang=lang, slow=False)
+            tts.save("speech.mp3")
+            response = make_response(send_file("speech.mp3", mimetype="audio/mpeg"))
+            response.headers['X-Word-Count'] = str(word_count)
+            response.headers['X-Audio-Minutes'] = str(audio_minutes)
+            return response
+        except Exception as gtts_error:
+            return f"የድምጽ ማመንጨት አልተቻለም: {str(edge_error)}", 500
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 10000))
