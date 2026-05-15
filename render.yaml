@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: GeletaGemechu-Reader-App
+    env: python
+    buildCommand: |
+      apt-get update && apt-get install -y tesseract-ocr tesseract-ocr-amh tesseract-ocr-eng
+      pip install -r requirements.txt
+    startCommand: python main.py
+    envVars:
+      - key: TESSDATA_PREFIX
+        value: /usr/share/tesseract-ocr/5/tessdata
+      - key: NIXPACKS_PKGS
+        value: "" # የቀድሞውን በእጅ የገባውን ቫሪያብል ለማጥፋት ይረዳል
