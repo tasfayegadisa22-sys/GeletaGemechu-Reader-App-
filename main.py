@@ -11,9 +11,11 @@ import asyncio
 import openpyxl
 import pytesseract
 from PIL import Image
-# Tesseract የሚገኝበትን አድራሻ ለፓይዘን መንገር
-pytesseract.pytesseract.tesseract_cmd = r'/usr/bin/tesseract'
+
 app = Flask(__name__)
+
+# Tesseract አድራሻ - በሊኑክስ ሰርቨር ላይ መደበኛው አድራሻ ይህ ነው
+pytesseract.pytesseract.tesseract_cmd = 'tesseract'
 
 async def _generate_edge_tts(text, voice, filename):
     communicate = edge_tts.Communicate(text, voice)
@@ -58,7 +60,6 @@ def read_text():
                             text_runs.append(soup.get_text())
                 text = "\n".join(text_runs)
             elif filename.endswith('.xlsx'):
-                # የኤክሴል ፋይል ማንበቢያ
                 wb = openpyxl.load_workbook(file)
                 text_runs = []
                 for sheet in wb.worksheets:
@@ -68,9 +69,8 @@ def read_text():
                                 text_runs.append(str(cell))
                 text = " ".join(text_runs)
             elif filename.endswith(('.png', '.jpg', '.jpeg')):
-                # የፎቶ/ምስል ማንበቢያ (OCR)
                 image = Image.open(file)
-                # አማርኛ እና እንግሊዝኛን አጣምሮ እንዲያነብ 'amh+eng' እንለዋለን
+                # አማርኛ እና እንግሊዝኛን አጣምሮ እንዲያነብ
                 text = pytesseract.image_to_string(image, lang='amh+eng')
             else:
                 return "ይህ የፋይል አይነት አይደገፍም።", 400
