@@ -11,7 +11,8 @@ import asyncio
 import openpyxl
 import pytesseract
 from PIL import Image
-
+# Tesseract የሚገኝበትን አድራሻ ለፓይዘን መንገር
+pytesseract.pytesseract.tesseract_cmd = r'/usr/bin/tesseract'
 app = Flask(__name__)
 
 async def _generate_edge_tts(text, voice, filename):
